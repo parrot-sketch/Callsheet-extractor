@@ -14,7 +14,124 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      contacts: {
+        Row: {
+          call_time: string | null
+          company: string | null
+          created_at: string
+          department: string | null
+          email: string | null
+          id: string
+          location: string | null
+          name: string
+          phone: string | null
+          production_id: string | null
+          role: string | null
+          source_file: string | null
+          wrap_time: string | null
+        }
+        Insert: {
+          call_time?: string | null
+          company?: string | null
+          created_at?: string
+          department?: string | null
+          email?: string | null
+          id?: string
+          location?: string | null
+          name: string
+          phone?: string | null
+          production_id?: string | null
+          role?: string | null
+          source_file?: string | null
+          wrap_time?: string | null
+        }
+        Update: {
+          call_time?: string | null
+          company?: string | null
+          created_at?: string
+          department?: string | null
+          email?: string | null
+          id?: string
+          location?: string | null
+          name?: string
+          phone?: string | null
+          production_id?: string | null
+          role?: string | null
+          source_file?: string | null
+          wrap_time?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contacts_production_id_fkey"
+            columns: ["production_id"]
+            isOneToOne: false
+            referencedRelation: "productions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      productions: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      uploads: {
+        Row: {
+          contacts_extracted: number | null
+          created_at: string
+          error_message: string | null
+          filename: string
+          id: string
+          production_id: string | null
+          status: string
+        }
+        Insert: {
+          contacts_extracted?: number | null
+          created_at?: string
+          error_message?: string | null
+          filename: string
+          id?: string
+          production_id?: string | null
+          status?: string
+        }
+        Update: {
+          contacts_extracted?: number | null
+          created_at?: string
+          error_message?: string | null
+          filename?: string
+          id?: string
+          production_id?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uploads_production_id_fkey"
+            columns: ["production_id"]
+            isOneToOne: false
+            referencedRelation: "productions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
