@@ -20,29 +20,28 @@ const consoleFormat = winston.format.combine(
   }),
 );
 
-export const logger = winston.createLogger({
-  level: config.LOG_LEVEL,
-  format: logFormat,
-  defaultMeta: { service: "call-sheet-backend" },
-  transports: [
-    new winston.transports.Console({
-      format: consoleFormat,
-    }),
+const transports: winston.transport[] = [
+  new winston.transports.Console({
+    format: consoleFormat,
+  }),
+];
+
+if (config.NODE_ENV !== "production") {
+  transports.push(
     new winston.transports.File({
       filename: "logs/error.log",
       level: "error",
     }),
     new winston.transports.File({
       filename: "logs/combined.log",
-    }),
-  ],
-});
-
-if (config.NODE_ENV !== "production") {
-  logger.add(
-    new winston.transports.Console({
-      format: consoleFormat,
-    }),
+    })
   );
 }
+
+export const logger = winston.createLogger({
+  level: config.LOG_LEVEL,
+  format: logFormat,
+  defaultMeta: { service: "call-sheet-backend" },
+  transports,
+});
 
