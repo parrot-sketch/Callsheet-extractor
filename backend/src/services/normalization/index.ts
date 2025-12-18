@@ -57,9 +57,6 @@ export class NormalizationService {
     // Normalize contacts
     result.contacts = result.contacts.map((contact) => {
       const originalName = contact.name;
-      const originalPhone = contact.phone;
-      const originalRole = contact.role;
-      const originalDepartment = contact.department;
 
       // Normalize name
       if (this.config.normalizeNames) {

@@ -6,10 +6,10 @@
  */
 
 export class PhoneNormalizer {
-  private defaultCountryCode: string;
+  // private defaultCountryCode: string;
 
-  constructor(defaultCountryCode: string = "1") {
-    this.defaultCountryCode = defaultCountryCode;
+  constructor(_defaultCountryCode: string = "1") {
+    // this.defaultCountryCode = defaultCountryCode;
   }
 
   /**
@@ -21,9 +21,9 @@ export class PhoneNormalizer {
 
     // Remove all non-digit characters except + at the start
     let digits = phone.replace(/[^\d+]/g, "");
-    
+
     // Handle + at the start
-    const hasPlus = digits.startsWith("+");
+    // const hasPlus = digits.startsWith("+");
     digits = digits.replace(/\D/g, "");
 
     if (digits.length === 0) return null;
@@ -33,7 +33,7 @@ export class PhoneNormalizer {
       // US number without country code: XXX-XXX-XXXX
       return this.formatUS(digits);
     }
-    
+
     if (digits.length === 11 && digits.startsWith("1")) {
       // US number with country code: 1-XXX-XXX-XXXX
       return this.formatUS(digits.substring(1));

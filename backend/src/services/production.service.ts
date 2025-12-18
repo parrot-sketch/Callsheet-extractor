@@ -1,7 +1,7 @@
 import { ProductionRepository } from "../repositories/production.repository.js";
 import { UploadRepository } from "../repositories/upload.repository.js";
 import { ContactRepository } from "../repositories/contact.repository.js";
-import { extractContacts, type ExtractContactsResult } from "./extraction.service.js";
+import { extractContacts } from "./extraction.service.js";
 import { logger } from "../utils/logger.js";
 import type { ExtractionResult, Production, ProductionDetail } from "../types/index.js";
 import type { NormalizationStats, NormalizationIssue } from "./normalization/types.js";
@@ -25,7 +25,7 @@ export class ProductionService {
     private productionRepo: ProductionRepository,
     private uploadRepo: UploadRepository,
     private contactRepo: ContactRepository,
-  ) {}
+  ) { }
 
   /**
    * Process a callsheet upload: create production, extract contacts, normalize, persist.
@@ -53,8 +53,10 @@ export class ProductionService {
       // Persist contacts (using normalized data)
       const contactRows = normalizedData.contacts.map((contact) => ({
         production_id: production.id,
+        upload_id: uploadId,
         name: contact.name,
         role: contact.role,
+        department: contact.department,
         department_raw: contact.department,
         email: contact.email,
         phone: contact.phone,

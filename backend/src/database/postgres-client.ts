@@ -38,7 +38,7 @@ export function getPool(): pg.Pool {
 /**
  * Execute a query against the database.
  */
-export async function query<T = any>(text: string, params?: any[]): Promise<pg.QueryResult<T>> {
+export async function query<T extends pg.QueryResultRow = any>(text: string, params?: any[]): Promise<pg.QueryResult<T>> {
   const start = Date.now();
   const result = await getPool().query<T>(text, params);
   const duration = Date.now() - start;

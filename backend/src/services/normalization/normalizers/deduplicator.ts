@@ -5,14 +5,9 @@
  * Merges contacts with same name, phone, or email.
  */
 
-interface Contact {
-  name: string;
-  role: string | null;
-  department: string | null;
-  phone: string | null;
-  email: string | null;
-  notes: string | null;
-}
+import type { ExtractionResult } from "../../../types/index.js";
+
+type Contact = ExtractionResult["contacts"][number];
 
 export class Deduplicator {
   /**
@@ -80,6 +75,7 @@ export class Deduplicator {
       phone: existing.phone || newContact.phone,
       email: existing.email || newContact.email,
       notes: this.mergeNotes(existing.notes, newContact.notes),
+      confidence: Math.max(existing.confidence, newContact.confidence),
     };
   }
 

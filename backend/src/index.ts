@@ -35,7 +35,7 @@ const limiter = rateLimit({
 app.use(limiter);
 
 // Health check
-app.get("/health", (req, res) => {
+app.get("/health", (_req, res) => {
   res.json({
     status: "ok",
     timestamp: new Date().toISOString(),
@@ -85,7 +85,7 @@ serverPromise.then((server) => {
 // Graceful shutdown
 async function gracefulShutdown(signal: string) {
   logger.info(`${signal} signal received: closing HTTP server`);
-  
+
   if (serverInstance) {
     serverInstance.close(async () => {
       logger.info("HTTP server closed");

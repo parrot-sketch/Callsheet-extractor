@@ -26,9 +26,11 @@ export interface Upload {
 export interface Contact {
   id: string;
   production_id: string | null;
+  upload_id: string | null;
   name: string;
   role: string | null;
   department: string | null;
+  department_raw: string | null;
   email: string | null;
   phone: string | null;
   company: string | null;
@@ -37,6 +39,8 @@ export interface Contact {
   wrap_time: string | null;
   source_file: string | null;
   created_at: string;
+  // Transients/Extraction only
+  confidence?: number;
 }
 
 export interface ProductionDetail {

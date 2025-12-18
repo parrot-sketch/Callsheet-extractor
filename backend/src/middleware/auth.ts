@@ -50,7 +50,7 @@ export async function authenticate(req: AuthenticatedRequest, res: Response, nex
       email: user.email,
     };
 
-    next();
+    return next();
   } catch (error) {
     logger.error("Authentication error:", error);
     return res.status(500).json({
