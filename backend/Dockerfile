@@ -5,6 +5,18 @@ WORKDIR /app
 
 # Install dependencies (cached if package.json changes)
 COPY package*.json ./
+
+# Install system dependencies for node-canvas
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    cairo-dev \
+    pango-dev \
+    jpeg-dev \
+    giflib-dev \
+    librsvg-dev
+
 RUN npm ci
 
 # Copy source code
