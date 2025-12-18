@@ -32,7 +32,7 @@ const configSchema = z.object({
   ALLOWED_FILE_TYPES: z.string().default("application/pdf,image/png,image/jpeg,image/jpg"),
 
   // CORS
-  CORS_ORIGIN: z.string().default("http://localhost:5173"),
+  CORS_ORIGIN: z.string().default("http://localhost:5173,https://callsheet-extractor.vercel.app"),
 
   // Logging
   LOG_LEVEL: z.enum(["error", "warn", "info", "debug"]).default("info"),
