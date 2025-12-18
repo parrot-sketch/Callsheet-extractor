@@ -32,13 +32,14 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
-# Install runtime dependencies for canvas
+# Install runtime dependencies for canvas and PDF processing
 RUN apt-get update && apt-get install -y \
     libcairo2 \
     libpango-1.0-0 \
     libjpeg62-turbo \
     libgif7 \
     librsvg2-2 \
+    poppler-utils \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy necessary files from builder
