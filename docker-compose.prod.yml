@@ -1,0 +1,68 @@
+services:
+  # --- Application Services ---
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: callsheet-frontend
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: callsheet-backend
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DATABASE_URL=postgresql://callsheet:callsheet_prod_password@postgres:5432/callsheet_connector
+      - REDIS_URL=redis://redis:6379
+      # Add other keys like OPENAI_API_KEY here or in .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # --- Infrastructure Services ---
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: callsheet-db-prod
+    restart: always
+    environment:
+      POSTGRES_USER: callsheet
+      POSTGRES_PASSWORD: callsheet_prod_password
+      POSTGRES_DB: callsheet_connector
+    volumes:
+      - postgres_data_prod:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U callsheet -d callsheet_connector"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: callsheet-redis-prod
+    restart: always
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data_prod:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data_prod:
+  redis_data_prod:

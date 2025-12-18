@@ -2,3 +2,12 @@ project_id = "xbbkaydhiemgsioukmrc"
 
 [functions.extract-contacts]
 verify_jwt = false
+
+[functions.process-upload]
+verify_jwt = true
+
+[functions.list-productions]
+verify_jwt = true
+
+[functions.get-production-detail]
+verify_jwt = true

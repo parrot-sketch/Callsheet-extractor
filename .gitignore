@@ -7,9 +7,20 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Dependencies
 node_modules
+.pnpm-store
+
+# Build Output
 dist
 dist-ssr
+build
+out
+
+# Environment Variables (CRITICAL)
+.env
+.env.*
+!.env.example
 *.local
 
 # Editor directories and files
@@ -22,3 +33,13 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Testing
+coverage
+.nyc_output
+
+# Backend Subdirectory (if node_modules exists there contextually)
+backend/node_modules
+backend/dist
+backend/coverage
+
