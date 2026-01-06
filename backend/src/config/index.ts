@@ -1,59 +1,166 @@
-import dotenv from "dotenv";
-import { z } from "zod";
+import express from "express";
+import cors from "cors";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
+import config from "./config/index.js";
+import { logger } from "./utils/logger.js";
+import { errorHandler } from "./middleware/error-handler.js";
+import productionRoutes from "./routes/productions.routes.js";
+import extractionRoutes from "./routes/extraction.routes.js";
+import { testConnection, closePool } from "./database/postgres-client.js";
 
-dotenv.config();
+const app = express();
 
-const configSchema = z.object({
-  // Server
-  NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
-  PORT: z.coerce.number().default(3001),
-  API_PREFIX: z.string().default("/api/v1"),
+// Trust proxy - required for Render and other reverse proxies
+app.set("trust proxy", 1);
 
-  // Supabase
-  SUPABASE_URL: z.string().url(),
-  SUPABASE_ANON_KEY: z.string().min(1),
-  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
+// Security middleware
+app.use(helmet());
 
-  // OpenAI
-  OPENAI_API_KEY: z.string().min(1),
-  OPENAI_MODEL: z.string().default("gpt-4o"),
+// CORS configuration with support for Vercel preview deployments
+const corsOrigins = config.CORS_ORIGIN.split(",").map((origin) => origin.trim());
+const corsOptions = {
+  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+    // Allow requests with no origin (mobile apps, Postman, etc.)
+    if (!origin) {
+      return callback(null, true);
+    }
 
-  // Redis
-  REDIS_HOST: z.string().default("localhost"),
-  REDIS_PORT: z.coerce.number().default(6379),
-  REDIS_PASSWORD: z.string().optional(),
+    // Normalize origin (remove trailing slash)
+    const normalizedOrigin = origin.replace(/\/$/, "");
 
-  // Rate Limiting
-  RATE_LIMIT_WINDOW_MS: z.coerce.number().default(900000), // 15 minutes
-  RATE_LIMIT_MAX_REQUESTS: z.coerce.number().default(100),
+    // Check if origin is in allowed list (exact match)
+    if (corsOrigins.includes(normalizedOrigin)) {
+      logger.debug(`CORS: Allowed origin from config: ${normalizedOrigin}`);
+      return callback(null, true);
+    }
 
-  // File Upload
-  MAX_FILE_SIZE: z.coerce.number().default(10485760), // 10MB
-  ALLOWED_FILE_TYPES: z.string().default("application/pdf,image/png,image/jpeg,image/jpg"),
+    // Check if origin matches any allowed origin (handles www/non-www variations)
+    const originMatches = corsOrigins.some((allowed) => {
+      const normalizedAllowed = allowed.replace(/\/$/, "");
+      // Match exact
+      if (normalizedOrigin === normalizedAllowed) {
+        return true;
+      }
+      // Match www/non-www variations
+      const originWithoutWww = normalizedOrigin.replace(/^https?:\/\/www\./, "https://");
+      const originWithWww = normalizedOrigin.replace(/^https?:\/\//, "https://www.");
+      const allowedWithoutWww = normalizedAllowed.replace(/^https?:\/\/www\./, "https://");
+      const allowedWithWww = normalizedAllowed.replace(/^https?:\/\//, "https://www.");
+      return (
+        originWithoutWww === normalizedAllowed ||
+        originWithWww === normalizedAllowed ||
+        normalizedOrigin === allowedWithoutWww ||
+        normalizedOrigin === allowedWithWww
+      );
+    });
 
-  // CORS
-  CORS_ORIGIN: z.string().default("http://localhost:5173,https://callsheet-extractor.vercel.app"),
+    if (originMatches) {
+      logger.debug(`CORS: Allowed origin (matched variation): ${normalizedOrigin}`);
+      return callback(null, true);
+    }
 
-  // Logging
-  LOG_LEVEL: z.enum(["error", "warn", "info", "debug"]).default("info"),
+    // Allow all Vercel preview deployments (*.vercel.app)
+    if (normalizedOrigin.endsWith(".vercel.app")) {
+      logger.debug(`CORS: Allowed Vercel preview deployment: ${normalizedOrigin}`);
+      return callback(null, true);
+    }
+
+    // Allow localhost for development
+    if (normalizedOrigin.startsWith("http://localhost:") || normalizedOrigin.startsWith("https://localhost:")) {
+      logger.debug(`CORS: Allowed localhost: ${normalizedOrigin}`);
+      return callback(null, true);
+    }
+
+    logger.warn(`CORS: Blocked origin: ${normalizedOrigin}. Allowed origins: ${corsOrigins.join(", ")}`);
+    callback(new Error(`Not allowed by CORS: ${normalizedOrigin}`));
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+  exposedHeaders: ["Content-Length", "Content-Type"],
+};
+
+app.use(cors(corsOptions));
+
+// Body parsing
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: config.RATE_LIMIT_WINDOW_MS,
+  max: config.RATE_LIMIT_MAX_REQUESTS,
+  message: "Too many requests from this IP, please try again later.",
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use(limiter);
+
+// Health check
+app.get("/health", (_req, res) => {
+  res.json({
+    status: "ok",
+    timestamp: new Date().toISOString(),
+    environment: config.NODE_ENV,
+  });
 });
 
-export type Config = z.infer<typeof configSchema>;
+// API routes
+app.use(`${config.API_PREFIX}/productions`, productionRoutes);
+app.use(`${config.API_PREFIX}/extraction`, extractionRoutes);
 
-let config: Config;
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({
+    error: "Not Found",
+    message: `Cannot ${req.method} ${req.path}`,
+  });
+});
 
-try {
-  config = configSchema.parse(process.env);
-} catch (error) {
-  if (error instanceof z.ZodError) {
-    console.error("❌ Configuration validation failed:");
-    error.errors.forEach((err) => {
-      console.error(`  - ${err.path.join(".")}: ${err.message}`);
-    });
+// Error handler (must be last)
+app.use(errorHandler);
+
+// Start server with database connection test
+async function startServer() {
+  // Test database connection first
+  const dbConnected = await testConnection();
+  if (!dbConnected) {
+    logger.error("❌ Failed to connect to database. Exiting.");
     process.exit(1);
   }
-  throw error;
+
+  const server = app.listen(config.PORT, () => {
+    logger.info(`🚀 Server running on port ${config.PORT}`);
+    logger.info(`📡 API available at http://localhost:${config.PORT}${config.API_PREFIX}`);
+    logger.info(`🌍 Environment: ${config.NODE_ENV}`);
+  });
+
+  return server;
 }
 
-export default config;
+const serverPromise = startServer();
+let serverInstance: ReturnType<typeof app.listen> | null = null;
+serverPromise.then((server) => {
+  serverInstance = server;
+});
+
+// Graceful shutdown
+async function gracefulShutdown(signal: string) {
+  logger.info(`${signal} signal received: closing HTTP server`);
+
+  if (serverInstance) {
+    serverInstance.close(async () => {
+      logger.info("HTTP server closed");
+      await closePool();
+      process.exit(0);
+    });
+  } else {
+    await closePool();
+    process.exit(0);
+  }
+}
+
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 
